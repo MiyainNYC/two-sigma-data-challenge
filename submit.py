@@ -183,7 +183,7 @@ model = rfr.fit(df_train_processed[features],df_train_processed['y'])
 
 
 while True:
-    pred['y'] = (model.predict(df_test_processed[features])
+    pred['y'] = model.predict(df_test_processed[features])
                  
     o, reward, done, info = env.step(pred)
     if done:
