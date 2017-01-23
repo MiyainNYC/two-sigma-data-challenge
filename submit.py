@@ -35,6 +35,8 @@ def mad_based_outlier(points, thresh=3.5):
 
 
 def preprocessing(df):
+    # input parameter: o.train
+    
     ## drop cols with over 30% missing value
     missing_ratio = df.isnull().sum()/df.shape[0]
     col_to_drop = missing_ratio.where(lambda x:x>0.3).dropna().index
@@ -99,6 +101,7 @@ def shuffling(df):
 
 ## use isolation forest to detect anomaly
 def anomaly_isolation(df):
+    
     # parameter: transformed df
     
     df_shuffled = shuffling(df)
@@ -114,10 +117,9 @@ def anomaly_isolation(df):
 ### classification
 
 def anomaly_classifier(df):
-    ### transformed df
-    df_shuffled = shuffling(df)
-    y  = mad_based_outlier(df_shuffled['y']) #label
-    X = df_shuffled[feature_cols] ##use original features to do classification
+    ### df_shuffled: transformed df with anomaly isolation
+    y  = mad_based_outlier(df['y']) #label
+    X = df[feature_cols] ##use original features to do classification
 
     ## deal with imbalance
     
@@ -139,56 +141,30 @@ def anomaly_classifier(df):
     y_pred_bal)))
     
     df['anomaly_classifier'] = y_pred_bal
+    
+    return df
+
+def feature_engineering(df):
+    df_transformed = preprocessing(df)
+    
+    df_shuffled = anomaly_isolation(df_transformed)
+    
+    df_final = anomaly_classifier(df_shuffled)
+    
+    print('%d features finally' % (len(df_final)-1))
+    
+    return df_final
+    
+    
 
 ## add another colume to indicate anomoly probability
 
-train = train[col]
-d_mean= train.median(axis=0)
+df_train = o.train
 
-train = o.train[col]
-n = train.isnull().sum(axis=1)
-for c in train.columns:
-    train[c + '_nan_'] = pd### classification
-y  = mad_based_outlier(df_shuffled['y']) #label
 
-feature_cols_all = [x for x in list(df_transformed.columns) if x not in ['y']]
 
-X = df_shuffled[feature_cols] ##use original features to do classification
 
-## deal with imbalance
 
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier 
-from imblearn import over_sampling as os
-from imblearn import pipeline as pl
-from imblearn.metrics import geometric_mean_score
-
-RANDOM_STATE = 42
-
-pipeline = pl.make_pipeline(os.SMOTE(random_state=RANDOM_STATE),
-                            RandomForestClassifier(random_state=RANDOM_STATE))
-
-# Split the data
-X_train, X_test, y_train, y_test = train_test_split(X, y,
-                                                    random_state=RANDOM_STATE)
-
-# Train the classifier with balancing
-pipeline.fit(X_train, y_train)
-
-# Test the classifier and get the prediction
-y_pred_bal = pipeline.predict(X_test)
-
-print('The geometric mean is {}'.format(geometric_mean_score(
-    y_test,
-    y_pred_bal)))
-
-## add another colume to indicate anomoly probability
-
-df_shuffled['predicted_ano'] = pipeline.predict(X).isnull(train[c])
-    d_mean[c + '_nan_'] = 0
-train = train.fillna(d_mean)
-train['znull'] = n
-n = []
 
 rfr = ExtraTreesRegressor(n_estimators=100, max_depth=4, n_jobs=-1, random_state=17, verbose=0)
 model1 = rfr.fit(train, o.train['y'])
