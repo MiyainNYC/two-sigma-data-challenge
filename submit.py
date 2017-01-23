@@ -20,6 +20,11 @@ o = env.reset()
 excl = [env.ID_COL_NAME, env.SAMPLE_COL_NAME, env.TARGET_COL_NAME, env.TIME_COL_NAME]
 feature_cols = [c for c in o.train.columns if c not in excl] ##original feature cols
 
+df_train = o.train
+df_test = o.features
+df_test['y'] = o.target
+
+
 
 def mad_based_outlier(points, thresh=3.5):
     if len(points.shape) == 1:
@@ -116,12 +121,14 @@ def anomaly_isolation(df):
     
 ### classification
 
-def anomaly_classifier(df):
-    ### df_shuffled: transformed df with anomaly isolation
-    y  = mad_based_outlier(df['y']) #label
-    X = df[feature_cols] ##use original features to do classification
-
-    ## deal with imbalance
+def classifier_model(df):
+    # parameter:   original train data
+    df_transformed = preprocessing(df)
+    df_shuffled = anomaly_isolation(df_transformed)
+    
+    y  = mad_based_outlier(df_shuffled['y']) #label
+    X = df_shuffled[feature_cols] ##use original features to do classification
+    
     
     RANDOM_STATE = 42
     pipeline = pl.make_pipeline(os.SMOTE(random_state=RANDOM_STATE),
@@ -131,33 +138,42 @@ def anomaly_classifier(df):
                                                     random_state=RANDOM_STATE)
     
     # Train the classifier with balancing
-    pipeline.fit(X_train, y_train)
-    
-    # Test the classifier and get the prediction
-    y_pred_bal = pipeline.predict(X_test)
-    
+    pipeline.fit(X_train, y_train)    
     print('The geometric mean is {}'.format(geometric_mean_score(
     y_test,
     y_pred_bal)))
     
-    df['anomaly_classifier'] = y_pred_bal
+    return pipeline
+
+model_anomaly_pipepline = classifier_model(df_train)
+
+
+def anomaly_rf(df):
+    ## shuffled df
     
+    feature_cols_all = [c for c in df.columns if c not in excl] ##original feature cols
+
+    df['anomaly_classifier'] = model_anomaly_pipepline.predict(df[feature_cols_all])
+     
     return df
+
+
 
 def feature_engineering(df):
     
     df_transformed = preprocessing(df)
     df_shuffled = anomaly_isolation(df_transformed)
-    df_final = anomaly_classifier(df_shuffled)
+    df_final = anomaly_rf(df_shuffled)
     
-    print('%d features finally' % (len(df_final)-1))
     return df_final
-    
-    
-df_train = o.train
-df_test = o.features
-y_test_true = o.target
 
+## feature engineering for train and test:
+df_train_processed = feature_engineering(df_train)
+df_test_processed = feature_engineering(df_test_X)
+
+
+
+# Modeling
 
 rfr = ExtraTreesRegressor(n_estimators=100, max_depth=4, n_jobs=-1, random_state=17, verbose=0)
 model1 = rfr.fit(train, o.train['y'])
