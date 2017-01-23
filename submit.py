@@ -175,8 +175,6 @@ features = [c for c in df_train_processed.columns if c not in excl]
 
 # Modeling
 
-####################
-test: test_df features
 pred = o.target # test_df 'y'
     
 
