@@ -145,25 +145,18 @@ def anomaly_classifier(df):
     return df
 
 def feature_engineering(df):
+    
     df_transformed = preprocessing(df)
-    
     df_shuffled = anomaly_isolation(df_transformed)
-    
     df_final = anomaly_classifier(df_shuffled)
     
     print('%d features finally' % (len(df_final)-1))
-    
     return df_final
     
     
-
-## add another colume to indicate anomoly probability
-
 df_train = o.train
-
-
-
-
+df_test = o.features
+y_test_true = o.target
 
 
 rfr = ExtraTreesRegressor(n_estimators=100, max_depth=4, n_jobs=-1, random_state=17, verbose=0)
