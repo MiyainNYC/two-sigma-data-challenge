@@ -171,38 +171,22 @@ def feature_engineering(df):
 df_train_processed = feature_engineering(df_train)
 df_test_processed = feature_engineering(df_test_X)
 
-
+features = [c for c in df_train_processed.columns if c not in excl]
 
 # Modeling
 
-rfr = ExtraTreesRegressor(n_estimators=100, max_depth=4, n_jobs=-1, random_state=17, verbose=0)
-model1 = rfr.fit(train, o.train['y'])
+####################
+test: test_df features
+pred = o.target # test_df 'y'
+    
 
-#https://www.kaggle.com/bguberfain/two-sigma-financial-modeling/univariate-model-with-clip/run/482189
-low_y_cut = -0.075
-high_y_cut = 0.075
-y_is_above_cut = (o.train.y > high_y_cut)
-y_is_below_cut = (o.train.y < low_y_cut)
-y_is_within_cut = (~y_is_above_cut & ~y_is_below_cut)
-model2 = LinearRegression(n_jobs=-1)
-model2.fit(np.array(o.train[col].fillna(d_mean).loc[y_is_within_cut, 'technical_20'].values).reshape(-1,1), o.train.loc[y_is_within_cut, 'y'])
-train = []
+rfr = RandomForestClassifier(n_estimators=100, max_depth=4, n_jobs=-1, random_state=17, verbose=0)
+model = rfr.fit(df_train_processed[features],df_train_processed['y'])
 
-#https://www.kaggle.com/ymcdull/two-sigma-financial-modeling/ridge-lb-0-0100659
-ymean_dict = dict(o.train.groupby(["id"])["y"].median())
 
 while True:
-    test = o.features[col]
-    n = test.isnull().sum(axis=1)
-    for c in test.columns:
-        test[c + '_nan_'] = pd.isnull(test[c])
-    test = test.fillna(d_mean)
-    test['znull'] = n
-    pred = o.target
-    test2 = np.array(o.features[col].fillna(d_mean)['technical_20'].values).reshape(-1,1)
-    pred['y'] = (model1.predict(test).clip(low_y_cut, high_y_cut) * 0.65) + (model2.predict(test2).clip(low_y_cut, high_y_cut) * 0.35)
-    pred['y'] = pred.apply(lambda r: 0.95 * r['y'] + 0.05 * ymean_dict[r['id']] if r['id'] in ymean_dict else r['y'], axis = 1)
-    pred['y'] = [float(format(x, '.6f')) for x in pred['y']]
+    pred['y'] = (model.predict(df_test_processed[features])
+                 
     o, reward, done, info = env.step(pred)
     if done:
         print("el fin ...", info["public_score"])
